@@ -669,3 +669,10 @@ app.listen(PORT, () => {
       ].join(', ')
   );
 });
+
+// Exported so a Vercel serverless function (see /api/index.js at the repo
+// root) can require this file directly and get the Express app as a
+// request handler. app.listen() above still runs on import — harmless on
+// Vercel (nothing binds to that port in the serverless runtime) and keeps
+// `node index.js` / `npm start` working unchanged for local development.
+module.exports = app;
