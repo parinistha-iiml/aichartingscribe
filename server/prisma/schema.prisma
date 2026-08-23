@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Doctor {
+  id                String              @id @default(uuid())
+  name              String
+  email             String              @unique
+  passwordHash      String
+  specialty         String
+  encounters        Encounter[] @relation("MakerDoctor")
+  checkedEncounters Encounter[] @relation("CheckerDoctor")
+  dictations        DictationLog[]
+  templates         DischargeTemplate[]
+  createdAt         DateTime            @default(now())
+}
+
+model Patient {
+  id                String      @id @default(uuid())
+  name              String
+  age               Int
+  priorVisitSummary String
+  encounters        Encounter[]
+}
+
+// A hospital-uniform discharge document format, uploaded once and reused
+// across encounters. Contains {{placeholder}} fields that get populated
+// from the structured note / patient / doctor / date at generation time.
+model DischargeTemplate {
+  id           String      @id @default(uuid())
+  name         String
+  templateText String
+  uploadedBy   Doctor      @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  encounters   Encounter[]
+}
+
+// Every dictation take (record or upload -> transcribe) is logged here,
+// append-only, so there's always a reviewable audio-to-text trail per
+// encounter rather than a single overwritable transcript.
+model DictationLog {
+  id          String    @id @default(uuid())
+  encounter   Encounter @relation(fields: [encounterId], references: [id])
+  encounterId String
+  doctor      Doctor    @relation(fields: [doctorId], references: [id])
+  doctorId    String
+  audioUrl    String?
+  transcript  String
+  createdAt   DateTime  @default(now())
+}
+
+model Encounter {
+  id        String  @id @default(uuid())
+  patient   Patient @relation(fields: [patientId], references: [id])
+  patientId String
+  // The "maker" — the dictating doctor who prepares the note.
+  doctor    Doctor  @relation("MakerDoctor", fields: [doctorId], references: [id])
+  doctorId  String
+
+  dictationLogs DictationLog[]
+  rawTranscript String         @default("") // merged view of all dictation takes, for structuring
+
+  // Structured note (M3/M4)
+  symptoms  String[] @default([])
+  meds      String[] @default([])
+  diagnosis String   @default("")
+  icd10     String[] @default([])
+
+  template         DischargeTemplate? @relation(fields: [templateId], references: [id])
+  templateId       String?
+  dischargeSummary String             @default("")
+
+  patientSummary    String  @default("")
+  translatedSummary String  @default("")
+  targetLanguage    String?
+
+  // Original AI-generated values, preserved for the Review & Approve diff view
+  aiSymptoms         String[] @default([])
+  aiMeds             String[] @default([])
+  aiDiagnosis        String?
+  aiIcd10             String[] @default([])
+  aiDischargeSummary String?
+  aiPatientSummary   String?
+
+  // 'draft' -> 'pending_checker' -> 'approved' (or back to 'draft' via checker reject)
+  status            String    @default("draft")
+  makerSubmittedAt  DateTime?
+  checker           Doctor?   @relation("CheckerDoctor", fields: [checkerId], references: [id])
+  checkerId         String?
+  checkerApprovedAt DateTime?
+  checkerNote       String?
+
+  createdAt DateTime @default(now())
+  auditLog  AuditLogEntry[]
+}
+
+model AuditLogEntry {
+  id          String    @id @default(uuid())
+  encounter   Encounter @relation(fields: [encounterId], references: [id])
+  encounterId String
+  timestamp   DateTime  @default(now())
+  doctor      String
+  field       String
+  before      String
+  after       String
+}
