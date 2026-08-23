@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { convertToWav16kMono } from '../audioConvert';
 
-export default function Dictation({ encounter, doctor, onContinue, onError }) {
+export default function Dictation({ encounter, doctor, onContinue, onBack, onError }) {
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -151,13 +151,20 @@ export default function Dictation({ encounter, doctor, onContinue, onError }) {
         </div>
       </div>
 
-      <button
-        disabled={log.length === 0}
-        onClick={onContinue}
-        className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50"
-      >
-        Continue to structuring →
-      </button>
+      <div className="flex items-center gap-2">
+        {onBack && (
+          <button onClick={onBack} className="px-4 py-2 rounded-md border border-slate-300 text-sm hover:bg-slate-100">
+            ← Back
+          </button>
+        )}
+        <button
+          disabled={log.length === 0}
+          onClick={onContinue}
+          className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50"
+        >
+          Continue to structuring →
+        </button>
+      </div>
     </div>
   );
 }
