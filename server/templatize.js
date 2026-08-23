@@ -4,6 +4,40 @@
 // reused for every future patient, and nothing about the source patient
 // is retained.
 
+// pdf-parse bundles pdfjs-dist, which expects browser globals (DOMMatrix,
+// ImageData, Path2D) for canvas-based rendering. We only ever extract text
+// (never render a page to an image), but pdfjs still references these at
+// module load time — without them it throws `ReferenceError: DOMMatrix is
+// not defined` and crashes the whole process. Rather than pull in a native
+// canvas binary (@napi-rs/canvas) — which is a common source of bundling
+// failures on serverless platforms like Vercel, since its platform-specific
+// binary is resolved dynamically and can be missed by static file-tracing —
+// we polyfill just enough with pure JS. `dommatrix` is a real, dependency-free
+// shim; ImageData/Path2D only need to exist, not actually render anything.
+if (typeof global.DOMMatrix === 'undefined') {
+  global.DOMMatrix = require('dommatrix');
+}
+if (typeof global.ImageData === 'undefined') {
+  global.ImageData = class ImageData {
+    constructor(data, width, height) {
+      this.data = data;
+      this.width = width;
+      this.height = height;
+    }
+  };
+}
+if (typeof global.Path2D === 'undefined') {
+  global.Path2D = class Path2D {
+    constructor() {}
+    moveTo() {}
+    lineTo() {}
+    closePath() {}
+    rect() {}
+    arc() {}
+    bezierCurveTo() {}
+  };
+}
+
 const { PDFParse } = require('pdf-parse');
 
 function slug(label) {
