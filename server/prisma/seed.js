@@ -1,13 +1,7 @@
-const { PrismaClient } = require('../generated/prisma');
-const { PrismaNeon } = require('@prisma/adapter-neon');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+import { PrismaClient } from '@prisma/client';
 
-const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
-// Demo password for every seeded doctor — printed at the end so whoever
-// runs the seed can log in immediately. Real signups go through /api/auth/signup.
 const DEMO_PASSWORD = 'demo1234';
 
 const doctors = [
