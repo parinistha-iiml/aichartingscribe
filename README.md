@@ -69,42 +69,6 @@ Two screens sit outside the linear flow, reachable anytime from the header/queue
 - **Discharge templates** — upload the hospital's *existing* discharge document (PDF or scanned image) and it's read + turned into a reusable `{{placeholder}}` format automatically — nobody types a template by hand. Patient-specific values (name, ID/record numbers, phone, address) are auto-blanked, with a mandatory review step before anything is saved (see "Templates from real documents" below).
 - **Patient History** — a patient's past approved visits (diagnosis, meds, the patient-facing summary they were given) for reference at follow-ups
 
-## Database setup (Neon + Prisma)
-
-1. **Create a Neon project** at [neon.tech](https://neon.tech) (free tier is plenty for this demo).
-2. From the Neon dashboard, open **Connection Details** and copy two connection
-   strings:
-   - the **pooled** connection (has `-pooler` in the hostname) → `DATABASE_URL`
-   - the **direct** connection (no `-pooler`) → `DIRECT_URL` (Prisma Migrate
-     needs a direct connection; it can't run migrations through the pooler)
-3. In `server/`, copy the template and fill in both values, plus the AI service keys
-   from the [AI Services](#ai-services) section above:
-   ```bash
-   cd server
-   cp .env.example .env
-   # edit .env and paste in your Neon connection strings + AI service API keys
-   ```
-   Note: in Prisma 7, connection URLs are no longer set in `schema.prisma`.
-   `prisma.config.ts` (used by the CLI for migrate/studio/seed) reads
-   `DIRECT_URL`, and `db.js` (used by the running app) builds a
-   `@prisma/adapter-neon` driver adapter from `DATABASE_URL`. You still need
-   both values in `.env` — nothing else to configure.
-4. Install dependencies, generate the Prisma client, and run the migration
-   (this creates the `Doctor`, `Patient`, `Encounter`, and `AuditLogEntry`
-   tables in your Neon database):
-   ```bash
-   npm install
-   npx prisma generate
-   npx prisma migrate dev --name init
-   ```
-5. Seed the demo doctors and synthetic patients:
-   ```bash
-   npx prisma db seed
-   ```
-   (or `npm run seed`)
-
-You can inspect the data anytime with `npx prisma studio`.
-
 ## Templates from real documents
 
 Hospitals don't hand-type a `{{placeholder}}` template — they have an existing discharge
@@ -151,37 +115,10 @@ session token on top of this.
 After `npx prisma db seed`, all three seeded doctors share the password `demo1234` (see the seed
 script's console output for their emails) so you can log in immediately without signing up first.
 
-## Running locally
-
-Two processes, two terminals:
-
-```bash
-# Terminal 1 — backend (port 4000)
-cd server
-npm start
-# GET http://localhost:4000/api/health should report { db: "connected", services: {...} }
-# — check this to see which AI services are live vs not configured
-```
-
-```bash
-# Terminal 2 — frontend (port 5173, proxies /api to :4000)
-cd client
-npm install
-npm run dev
-```
-
-Then open the URL Vite prints (typically http://localhost:5173).
-
-To build the frontend for static hosting:
-
-```bash
-cd client
-npm run build   # outputs to client/dist
-```
 
 ## Scope (per spec)
 
-- No real EHR/FHIR integration — "Approve & Send" only flips `status` to `approved`.
+- No real EHR/FHIR integration at the moment
 - No real patient audio capture — self-dictation only.
 - No production PHI redaction — synthetic patient names/data only.
 - No session/JWT layer on top of login (see Auth above).
